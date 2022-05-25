@@ -1,16 +1,17 @@
 import os
 import time
+import json
 import datetime
 import requests
 import config as cfg
 
 from discord_webhook import DiscordWebhook, DiscordEmbed
 
-if os.path.exists('reg_last.txt'):
-    with open('reg_last.txt', "r") as f:
-        last_id = f.read()
+if os.path.exists('trendsLinks.json'):
+    with open('regs.json', "r") as f:
+        users = json.load(f)
 else:
-    last_id = ''
+    users = []
 
 headers = {
     "Authorization": "Bearer " + cfg.token
@@ -25,17 +26,14 @@ response = requests.request(
     }
 )
 
-first_id = None
-
 for u in response.json():
-    if u['id'] == last_id:
+    if u['id'] in users:
         break
 
     if not u['confirmed']:
         continue
 
-    if first_id is None:
-        first_id = u['id']
+    users.append(u['id'])
 
     webhook = DiscordWebhook(
         url=cfg.whook,
@@ -71,8 +69,5 @@ for u in response.json():
 
     time.sleep(2)
 
-if first_id is not None:
-    last_id = first_id
-
-with open('reg_last.txt', "w") as f:
-    f.write(last_id)
+with open('regs.json', "w") as f:
+    json.dump(users, f)
