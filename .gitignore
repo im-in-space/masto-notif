@@ -1,0 +1,10 @@
+# Logs
+*.log
+
+# Config file
+config.py
+
+# Data
+reg_last.txt
+trendsLinks.json
+trendsStatuses.json

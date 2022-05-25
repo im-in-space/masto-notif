@@ -1,0 +1,7 @@
+# Token with the read and admin scopes you need
+token = ''
+# Base URL of your instance, without a trailing slash
+base_url = 'https://im-in.space'
+# Discord webhook URL
+whook = 'https://discord.com/api/webhooks/[channel id]/' + \
+        '[token]'
