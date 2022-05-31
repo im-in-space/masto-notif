@@ -1,12 +1,16 @@
+import os
 import json
 import time
+import sqlite3
 import datetime
-import os
 import requests
 import html2text
 import config as cfg
 
+from shutil import copyfile
 from discord_webhook import DiscordWebhook, DiscordEmbed
+
+db = None
 
 h = html2text.HTML2Text()
 h.ignore_links = True
@@ -17,11 +21,7 @@ headers = {
 
 
 def trends_statuses():
-    if os.path.exists('trendsStatuses.json'):
-        with open('trendsStatuses.json', "r") as f:
-            statuses = json.load(f)
-    else:
-        statuses = []
+    db_s = db.cursor()
 
     response = requests.request(
         "GET",
@@ -30,10 +30,17 @@ def trends_statuses():
     )
 
     for s in response.json():
-        if s['id'] in statuses:
+        r = db_s.execute(
+            'SELECT COUNT(postid) FROM knownTrendingPosts WHERE postid=?',
+            (s['id'],)
+        ).fetchone()
+        if r[0] != 0:
             continue
 
-        statuses.append(s['id'])
+        db_s.execute(
+            'INSERT INTO knownTrendingPosts(postid) VALUES (?)',
+            (s['id'],)
+        )
 
         webhook = DiscordWebhook(
             url=cfg.whook,
@@ -84,16 +91,9 @@ def trends_statuses():
 
         time.sleep(2)
 
-    with open('trendsStatuses.json', "w") as f:
-        json.dump(statuses, f)
-
 
 def trends_links():
-    if os.path.exists('trendsLinks.json'):
-        with open('trendsLinks.json', "r") as f:
-            links = json.load(f)
-    else:
-        links = []
+    db_l = db.cursor()
 
     response = requests.request(
         "GET",
@@ -102,10 +102,17 @@ def trends_links():
     )
 
     for link in response.json():
-        if link['url'] in links:
+        r = db_l.execute(
+            'SELECT COUNT(url) FROM knownTrendingLinks WHERE url=?',
+            (link['url'],)
+        ).fetchone()
+        if r[0] != 0:
             continue
 
-        links.append(link['url'])
+        db_l.execute(
+            'INSERT INTO knownTrendingLinks(url) VALUES (?)',
+            (link['url'],)
+        )
 
         webhook = DiscordWebhook(
             url=cfg.whook,
@@ -133,9 +140,22 @@ def trends_links():
 
         time.sleep(2)
 
-    with open('trendsLinks.json', "w") as f:
-        json.dump(links, f)
 
+if __name__ == "__main__":
+    # Ready the SQLite DB
+    try:
+        # If there's no database file, copy from the empty one
+        if not os.path.isfile('db.sqlite'):
+            copyfile('empty.sqlite', 'db.sqlite')
 
-trends_statuses()
-trends_links()
+        # Connect to SQLite3 DB
+        db = sqlite3.connect('db.sqlite')
+    except Exception as e:
+        print("Error while trying to load DB: " + str(e))
+        exit(1)
+
+    trends_statuses()
+    trends_links()
+
+    db.commit()
+    db.close()

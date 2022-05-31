@@ -11,3 +11,4 @@ reg_last.txt
 regs.json
 trendsLinks.json
 trendsStatuses.json
+db.sqlite

@@ -1,17 +1,26 @@
 import os
 import time
 import json
+import sqlite3
 import datetime
 import requests
 import config as cfg
 
+from shutil import copyfile
 from discord_webhook import DiscordWebhook, DiscordEmbed
 
-if os.path.exists('trendsLinks.json'):
-    with open('regs.json', "r") as f:
-        users = json.load(f)
-else:
-    users = []
+# Ready the SQLite DB
+try:
+    # If there's no database file, copy from the empty one
+    if not os.path.isfile('db.sqlite'):
+        copyfile('empty.sqlite', 'db.sqlite')
+
+    # Connect to SQLite3 DB
+    db = sqlite3.connect('db.sqlite')
+    cur = db.cursor()
+except Exception as e:
+    print("Error while trying to load DB: " + str(e))
+    exit(1)
 
 headers = {
     "Authorization": "Bearer " + cfg.token
@@ -27,13 +36,20 @@ response = requests.request(
 )
 
 for u in response.json():
-    if u['id'] in users:
-        break
+    r = cur.execute(
+        'SELECT COUNT(userid) FROM knownRegs WHERE userid=?',
+        (u['id'],)
+    ).fetchone()
+    if r[0] != 0:
+        continue
+
+    cur.execute(
+        'INSERT INTO knownRegs(userid) VALUES (?)',
+        (u['id'],)
+    )
 
     if not u['confirmed']:
         continue
-
-    users.append(u['id'])
 
     webhook = DiscordWebhook(
         url=cfg.whook,
@@ -62,12 +78,11 @@ for u in response.json():
     embed.add_embed_field(name='Username', value=u['username'])
     embed.add_embed_field(name='Email', value=u['email'], inline=False)
     embed.add_embed_field(name='Locale', value=u['locale'])
-    embed.add_embed_field(name='Last IP', value=u['ip']['ip'])
 
     webhook.add_embed(embed)
     response = webhook.execute()
 
     time.sleep(2)
 
-with open('regs.json', "w") as f:
-    json.dump(users, f)
+db.commit()
+db.close()
