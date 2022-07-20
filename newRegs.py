@@ -1,6 +1,5 @@
 import os
 import time
-import json
 import sqlite3
 import datetime
 import requests
@@ -76,8 +75,43 @@ for u in response.json():
         pass
 
     embed.add_embed_field(name='Username', value=u['username'])
-    embed.add_embed_field(name='Email', value=u['email'], inline=False)
     embed.add_embed_field(name='Locale', value=u['locale'])
+    embed.add_embed_field(name='Email', value=u['email'], inline=False)
+
+    # Spam check
+    try:
+        sr = requests.request(
+            "GET",
+            'http://api.stopforumspam.org/api?email={0}&ip={1}&json'.format(
+                u['email'], u['ip']['ip']
+            )
+        )
+        sc = sr.json()
+
+        sce = 'OK'
+        if sc['email']['appears'] == 1:
+            sce = 'Freq.: {}, Seen: {}, Confidence: {}'.format(
+                sc['email']['frequency'],
+                sc['email']['lastseen'],
+                sc['email']['confidence']
+            )
+
+        embed.add_embed_field(name='Email Check', value=sce, inline=False)
+
+        sci = 'OK'
+        if sc['ip']['appears'] == 1:
+            sci = 'Country: {}, Freq.: {}, Seen: {}, Confidence: {}'.format(
+                sc['ip']['country'],
+                sc['ip']['frequency'],
+                sc['ip']['lastseen'],
+                sc['ip']['confidence']
+            )
+
+        embed.add_embed_field(name='IP Check', value=sci, inline=False)
+    except requests.exceptions.RequestException as e:
+        print('StopForumSpam request failed. ' + str(e))
+    except Exception as e:
+        print('StopForumSpam check failed. ' + str(e))
 
     webhook.add_embed(embed)
     response = webhook.execute()
