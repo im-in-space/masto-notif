@@ -42,11 +42,6 @@ for u in response.json():
     if r[0] != 0:
         continue
 
-    cur.execute(
-        'INSERT INTO knownRegs(userid) VALUES (?)',
-        (u['id'],)
-    )
-
     if not u['confirmed']:
         continue
 
@@ -115,6 +110,11 @@ for u in response.json():
 
     webhook.add_embed(embed)
     response = webhook.execute()
+
+    cur.execute(
+        'INSERT INTO knownRegs(userid) VALUES (?)',
+        (u['id'],)
+    )
 
     time.sleep(2)
 
