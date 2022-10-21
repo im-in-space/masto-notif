@@ -45,6 +45,8 @@ for u in response.json():
     if not u['confirmed']:
         continue
 
+    print(u)
+
     webhook = DiscordWebhook(
         url=cfg.whook,
         rate_limit_retry=True
@@ -75,11 +77,12 @@ for u in response.json():
 
     # Spam check
     try:
-        sr = requests.request(
-            "GET",
-            'http://api.stopforumspam.org/api?email={0}&ip={1}&json'.format(
-                u['email'], u['ip']['ip']
-            )
+        sr = requests.post(
+            'http://api.stopforumspam.org/api?json',
+            data={
+                'email': u['email'],
+                'ip': u['ip']
+            }
         )
         sc = sr.json()
 
@@ -110,6 +113,8 @@ for u in response.json():
 
     webhook.add_embed(embed)
     response = webhook.execute()
+
+    break
 
     cur.execute(
         'INSERT INTO knownRegs(userid) VALUES (?)',
