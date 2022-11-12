@@ -114,8 +114,6 @@ for u in response.json():
     webhook.add_embed(embed)
     response = webhook.execute()
 
-    break
-
     cur.execute(
         'INSERT INTO knownRegs(userid) VALUES (?)',
         (u['id'],)
