@@ -42,13 +42,13 @@ for u in response.json():
     if r[0] != 0:
         continue
 
-    if not u['confirmed']:
-        continue
+#    if not u['confirmed']:
+#        continue
 
-    print(u)
+#    print(u)
 
     webhook = DiscordWebhook(
-        url=cfg.whook,
+        url=cfg.whook_reg,
         rate_limit_retry=True
     )
 

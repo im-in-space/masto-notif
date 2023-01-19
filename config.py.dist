@@ -1,7 +1,30 @@
 # Token with the read and admin scopes you need
 token = ''
+
 # Base URL of your instance, without a trailing slash
 base_url = 'https://im-in.space'
-# Discord webhook URL
-whook = 'https://discord.com/api/webhooks/[channel id]/' + \
-        '[token]'
+
+# Discord webhook URL for trends for review
+whook_trends_rev = 'https://discord.com/api/webhooks/[channel id]/' + \
+                   '[token]'
+
+# Discord webhook URL for (auto-)approved trends
+whook_trends_ok = 'https://discord.com/api/webhooks/[channel id]/' + \
+                  '[token]'
+
+# Discord webhook URL for registrations
+whook_reg = 'https://discord.com/api/webhooks/[channel id]/' + \
+            '[token]'
+
+# Enable auto-approving trends (REQUIRES CUSTOM ADMIN API ENDPOINT)
+trends_auto = False
+
+# List of strings to prevent auto-approval (ie. some begposts to vet)
+trends_hold = [
+    'donate',
+    'support',
+    'paypal',
+    'kofi',
+    'ko-fi',
+    'sponsor'
+]

@@ -19,12 +19,16 @@ headers = {
 }
 
 
-def trends_statuses():
+def trends_statuses(admin=False):
     db_s = db.cursor()
+
+    endpoint = "/api/v1/trends/statuses"
+    if admin:
+        endpoint = "/api/v1/admin/trends/statuses"
 
     response = requests.request(
         "GET",
-        cfg.base_url + "/api/v1/admin/trends/statuses",
+        cfg.base_url + endpoint,
         headers=headers
     )
 
@@ -41,21 +45,47 @@ def trends_statuses():
             (s['id'],)
         )
 
+        auto_approve = False
+
+        if admin and cfg.trends_auto and not any(substring in s['content'] for substring in cfg.trends_hold):
+            try:
+                pr = requests.request(
+                    "POST",
+                    cfg.base_url + "/api/v1/admin/trends/statuses/batch",
+                    headers=headers,
+                    data={
+                        'trends_status_batch[status_ids][]': str(s['id']),
+                        'approve': 'true'
+                    }
+                )
+
+                if pr.status_code == requests.codes.ok:
+                    auto_approve = True
+                    print('Auto approved ' + str(s['id']))
+            except Exception:
+                # Silently ignore
+                print('Auto approve fail')
+                pass
+
+        whook_url = cfg.whook_trends_ok
+        if admin and not auto_approve:
+            whook_url = cfg.whook_trends_rev
+
         webhook = DiscordWebhook(
-            url=cfg.whook,
+            url=whook_url,
             rate_limit_retry=True
         )
 
         embed = DiscordEmbed(
             title='New trending status',
             url=cfg.base_url + '/admin/trends/statuses',
-            description=h.handle(s['content'][:1500]),
+            description=h.handle(s['content'])[:500],
             color='02954a'
         )
 
         embed.set_author(
             name=s['account']['acct'],
-            url=s['account']['url'],
+            url=s['url'],
             icon_url=s['account']['avatar']
         )
 
@@ -91,12 +121,16 @@ def trends_statuses():
         time.sleep(2)
 
 
-def trends_links():
+def trends_links(admin=False):
     db_l = db.cursor()
+
+    endpoint = "/api/v1/trends/links"
+    if admin:
+        endpoint = "/api/v1/admin/trends/links"
 
     response = requests.request(
         "GET",
-        cfg.base_url + "/api/v1/admin/trends/links",
+        cfg.base_url + endpoint,
         headers=headers
     )
 
@@ -113,8 +147,12 @@ def trends_links():
             (link['url'],)
         )
 
+        whook_url = cfg.whook_trends_ok
+        if admin:
+            whook_url = cfg.whook_trends_rev
+
         webhook = DiscordWebhook(
-            url=cfg.whook,
+            url=whook_url,
             rate_limit_retry=True
         )
 
@@ -153,8 +191,11 @@ if __name__ == "__main__":
         print("Error while trying to load DB: " + str(e))
         exit(1)
 
-    trends_statuses()
-    trends_links()
+    trends_statuses(False)
+    trends_statuses(True)
+
+    trends_links(False)
+    trends_links(True)
 
     db.commit()
     db.close()
