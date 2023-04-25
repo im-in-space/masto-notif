@@ -16,7 +16,7 @@ whook_trends_ok = 'https://discord.com/api/webhooks/[channel id]/' + \
 whook_reg = 'https://discord.com/api/webhooks/[channel id]/' + \
             '[token]'
 
-# Enable auto-approving trends (REQUIRES CUSTOM ADMIN API ENDPOINT)
+# Enable auto-approving trends (Mastodon >=4.1.3)
 trends_auto = False
 
 # List of strings to prevent auto-approval (ie. some begposts to vet)

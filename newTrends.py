@@ -47,16 +47,15 @@ def trends_statuses(admin=False):
 
         auto_approve = False
 
-        if admin and cfg.trends_auto and not any(substring in s['content'] for substring in cfg.trends_hold):
+        if (admin and cfg.trends_auto and  # If this is running as the admin view and we enabled auto-trends
+            s['requires_review'] and  # and if this trend is awaiting review
+            not any(substring in s['content'] for substring in cfg.trends_hold)):  # and it doesn't contain "hold" terms
             try:
+                # This endpoint was introduced in 4db8230 for Mastodon 4.1.3
                 pr = requests.request(
                     "POST",
-                    cfg.base_url + "/api/v1/admin/trends/statuses/batch",
-                    headers=headers,
-                    data={
-                        'trends_status_batch[status_ids][]': str(s['id']),
-                        'approve': 'true'
-                    }
+                    "{base}{endpoint}/{id}/approve".format(base=cfg.base_url, endpoint=endpoint, id=s['id']),
+                    headers=headers
                 )
 
                 if pr.status_code == requests.codes.ok:
@@ -64,7 +63,7 @@ def trends_statuses(admin=False):
                     print('Auto approved ' + str(s['id']))
             except Exception:
                 # Silently ignore
-                print('Auto approve fail')
+                print('Auto approve failed')
                 pass
 
         whook_url = cfg.whook_trends_ok
