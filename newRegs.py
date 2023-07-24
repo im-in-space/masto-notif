@@ -6,6 +6,7 @@ import requests
 import config as cfg
 
 from shutil import copyfile
+from verifier import verifier
 from discord_webhook import DiscordWebhook, DiscordEmbed
 
 # Ready the SQLite DB
@@ -35,6 +36,8 @@ response = requests.request(
 )
 
 for u in response.json():
+    ping_admin = False
+
     r = cur.execute(
         'SELECT COUNT(userid) FROM knownRegs WHERE userid=?',
         (u['id'],)
@@ -88,16 +91,22 @@ for u in response.json():
 
         sce = 'OK'
         if sc['email']['appears'] == 1:
+            ping_admin = True
             sce = 'Freq.: {}, Seen: {}, Confidence: {}'.format(
                 sc['email']['frequency'],
                 sc['email']['lastseen'],
                 sc['email']['confidence']
             )
 
-        embed.add_embed_field(name='Email Check', value=sce, inline=False)
+        embed.add_embed_field(
+            name='Email Check',
+            value=sce,
+            inline=False
+        )
 
         sci = 'OK'
         if sc['ip']['appears'] == 1:
+            ping_admin = True
             sci = 'Country: {}, Freq.: {}, Seen: {}, Confidence: {}'.format(
                 sc['ip']['country'],
                 sc['ip']['frequency'],
@@ -105,13 +114,37 @@ for u in response.json():
                 sc['ip']['confidence']
             )
 
-        embed.add_embed_field(name='IP Check', value=sci, inline=False)
+        embed.add_embed_field(
+            name='IP Check',
+            value=sci,
+            inline=False
+        )
     except requests.exceptions.RequestException as e:
         print('StopForumSpam request failed. ' + str(e))
     except Exception as e:
         print('StopForumSpam check failed. ' + str(e))
 
+    # Check for Burner Email Providers
+    try:
+        if cfg.verifier_key:
+            bi = 'OK'
+            if not verifier.verify(u['email'], cfg.verifier_key):
+                ping_admin = True
+                bi = 'DID NOT PASS'
+
+            embed.add_embed_field(
+                name='Burner Email Check',
+                value=bi,
+                inline=False
+            )
+    except Exception as e:
+        print('Disposable Email Detector check failed. ' + str(e))
+
     webhook.add_embed(embed)
+
+    if ping_admin and cfg.discord_uid:
+        webhook.content = f'<@{cfg.discord_uid}>'
+
     response = webhook.execute()
 
     cur.execute(

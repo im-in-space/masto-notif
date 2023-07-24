@@ -24,3 +24,8 @@ python newTrends.py
 
 This code is provided as-is and without intention of providing additional help.  
 There may be unannounced broken changes and no support will be provided.
+
+Two external services are used in [`newRegs.py`](newRegs.py):
+
+- [Stop Forum Spam](https://www.stopforumspam.com/) is used to check if an IP or email is in their database.
+- [Verifier](https://verifier.meetchopra.com/) is used to check if a domain is valid and not used for disposable addresses, you'll need to signup to get a (free) API Key.

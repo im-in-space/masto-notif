@@ -16,6 +16,14 @@ whook_trends_ok = 'https://discord.com/api/webhooks/[channel id]/' + \
 whook_reg = 'https://discord.com/api/webhooks/[channel id]/' + \
             '[token]'
 
+# API key from verifier.meetchopra.com to check if email is valid
+# and not from a disposable provider. Set to `False` to disable
+verifier_key = False
+
+# Discord user id to ping if a new user triggers one of the checks.
+# Set to `False` to disable
+discord_uid = False
+
 # Enable auto-approving trends (Mastodon >=4.1.3)
 trends_auto = False
 
