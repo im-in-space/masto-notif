@@ -1,3 +1,6 @@
+# Enable or disable debug logging
+DEBUG_MODE = False
+
 # Token with the read and admin scopes you need
 token = ''
 

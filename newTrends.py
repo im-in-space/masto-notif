@@ -9,10 +9,19 @@ import config as cfg
 from shutil import copyfile
 from discord_webhook import DiscordWebhook, DiscordEmbed
 
+
+def _debug(msg, obj=''):
+    if (cfg.DEBUG_MODE):
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+        print('[' + now + '] ' + msg, obj)
+
+
 db = None
 
+_debug('Init html2text')
 h = html2text.HTML2Text()
 h.ignore_links = True
+_debug('Done')
 
 headers = {
     "Authorization": "Bearer " + cfg.token
@@ -20,17 +29,20 @@ headers = {
 
 
 def trends_statuses(admin=False):
+    _debug('=> trends_statuses(' + str(admin) + ')')
     db_s = db.cursor()
 
     endpoint = "/api/v1/trends/statuses"
     if admin:
         endpoint = "/api/v1/admin/trends/statuses"
 
+    _debug('Fetching ' + endpoint + '...')
     response = requests.request(
         "GET",
         cfg.base_url + endpoint,
         headers=headers
     )
+    _debug('Done')
 
     for s in response.json():
         r = db_s.execute(
@@ -38,12 +50,15 @@ def trends_statuses(admin=False):
             (s['id'],)
         ).fetchone()
         if r[0] != 0:
+            _debug(str(s['id']) + ' already done')
             continue
 
+        _debug('Inserting ' + str(s['id']) + '...')
         db_s.execute(
             'INSERT INTO knownTrendingPosts(postid) VALUES (?)',
             (s['id'],)
         )
+        _debug('Done')
 
         auto_approve = False
 
@@ -52,11 +67,13 @@ def trends_statuses(admin=False):
             not any(substring in s['content'] for substring in cfg.trends_hold)):  # and it doesn't contain "hold" terms
             try:
                 # This endpoint was introduced in 4db8230 for Mastodon 4.1.3
+                _debug('Auto-approving ' + str(s['id']) + '...')
                 pr = requests.request(
                     "POST",
                     "{base}{endpoint}/{id}/approve".format(base=cfg.base_url, endpoint=endpoint, id=s['id']),
                     headers=headers
                 )
+                _debug('Done')
 
                 if pr.status_code == requests.codes.ok:
                     auto_approve = True
@@ -68,6 +85,7 @@ def trends_statuses(admin=False):
 
         whook_url = cfg.whook_trends_ok
         if admin and not auto_approve:
+            _debug('Will send to not auto-approved webhook')
             whook_url = cfg.whook_trends_rev
 
         webhook = DiscordWebhook(
@@ -103,6 +121,7 @@ def trends_statuses(admin=False):
         embed.add_embed_field(name='Favorites', value=s['favourites_count'])
 
         if len(s['media_attachments']) > 0:
+            _debug('There are file attachements')
             embed.add_embed_field(
                 name='Attachments',
                 value=str(len(s['media_attachments'])),
@@ -111,27 +130,33 @@ def trends_statuses(admin=False):
 
             for m in s['media_attachments']:
                 if m['type'] == 'image':
+                    _debug('Adding an attachments since it is an image')
                     embed.set_image(url=m['preview_url'])
                     break  # Only one element
 
         webhook.add_embed(embed)
+        _debug('Sending webhook...')
         response = webhook.execute()
+        _debug('Done', response)
 
         time.sleep(2)
 
 
 def trends_links(admin=False):
+    _debug('=> trends_links(' + str(admin) + ')')
     db_l = db.cursor()
 
     endpoint = "/api/v1/trends/links"
     if admin:
         endpoint = "/api/v1/admin/trends/links"
 
+    _debug('Fetching ' + endpoint + '...')
     response = requests.request(
         "GET",
         cfg.base_url + endpoint,
         headers=headers
     )
+    _debug('Done')
 
     for link in response.json():
         r = db_l.execute(
@@ -139,15 +164,19 @@ def trends_links(admin=False):
             (link['url'],)
         ).fetchone()
         if r[0] != 0:
+            _debug(str(link['url']) + ' already done')
             continue
 
+        _debug('Inserting ' + str(link['url']) + '...')
         db_l.execute(
             'INSERT INTO knownTrendingLinks(url) VALUES (?)',
             (link['url'],)
         )
+        _debug('Done')
 
         whook_url = cfg.whook_trends_ok
         if admin:
+            _debug('Will send to not auto-approved webhook')
             whook_url = cfg.whook_trends_rev
 
         webhook = DiscordWebhook(
@@ -166,13 +195,17 @@ def trends_links(admin=False):
         embed.set_timestamp()
 
         if link['provider_name'] != '':
+            _debug('Adding provider name')
             embed.set_footer(text=link['provider_name'])
 
         if link['image'] != '':
+            _debug('Adding image')
             embed.set_thumbnail(url=link['image'])
 
         webhook.add_embed(embed)
+        _debug('Sending webhook...')
         response = webhook.execute()
+        _debug('Done', response)
 
         time.sleep(2)
 
@@ -182,10 +215,13 @@ if __name__ == "__main__":
     try:
         # If there's no database file, copy from the empty one
         if not os.path.isfile('db.sqlite'):
+            _debug('DB copied from empty')
             copyfile('empty.sqlite', 'db.sqlite')
 
         # Connect to SQLite3 DB
+        _debug('Connecting to DB...')
         db = sqlite3.connect('db.sqlite')
+        _debug('Done')
     except Exception as e:
         print("Error while trying to load DB: " + str(e))
         exit(1)
@@ -196,5 +232,9 @@ if __name__ == "__main__":
     trends_links(False)
     trends_links(True)
 
+    _debug('Commit DB...')
     db.commit()
+    _debug('Done')
+    _debug('Closing DB...')
     db.close()
+    _debug('Done')
