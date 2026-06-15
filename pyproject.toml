@@ -18,6 +18,7 @@ dev = [
 line-length = 140
 
 [tool.ruff.lint]
+preview = true
 select = [
   "A",
   "ARG",
@@ -26,7 +27,7 @@ select = [
   "C4",
   "C90",
   "COM",
-  "CPY",
+  # "CPY",
   "DJ",
   "DOC",
   "DTZ",
@@ -77,4 +78,8 @@ select = [
   "UP",
   "W",
   "YTT",
+]
+ignore = [
+  # Try clause contains too many statements
+  "PLW0717",
 ]

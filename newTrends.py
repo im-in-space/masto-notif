@@ -130,6 +130,9 @@ def trends_statuses(db, *, admin: bool = False) -> None:
     Args:
         admin: When True, use the admin API endpoint and apply auto-approval
             logic. Defaults to False.
+
+    Raises:
+        RuntimeError: If the database connection is not initialized.
     """
     _debug("=> trends_statuses(" + str(admin) + ")")
 
@@ -178,6 +181,9 @@ def trends_links(db, *, admin: bool = False) -> None:
 
     Args:
         admin: When True, use the admin API endpoint. Defaults to False.
+
+    Raises:
+        RuntimeError: If the database connection is not initialized.
     """
     _debug("=> trends_links(" + str(admin) + ")")
 
@@ -222,11 +228,11 @@ def trends_links(db, *, admin: bool = False) -> None:
 
         embed.set_timestamp()
 
-        if link["provider_name"] != "":
+        if link["provider_name"]:
             _debug("Adding provider name")
             embed.set_footer(text=link["provider_name"])
 
-        if link["image"] != "":
+        if link["image"]:
             _debug("Adding image")
             embed.set_thumbnail(url=link["image"])
 
@@ -267,6 +273,7 @@ if __name__ == "__main__":
     _debug("Commit DB...")
     db.commit()
     _debug("Done")
+
     _debug("Closing DB...")
     db.close()
     _debug("Done")

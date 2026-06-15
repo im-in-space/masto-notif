@@ -70,8 +70,52 @@ def _check_spam(u: dict, embed: DiscordEmbed) -> bool:
     return result
 
 
+def _check_skipsend(u: dict, embed: DiscordEmbed) -> bool:
+    """Check email against SkipSend, adding results to the embed.
+
+    Args:
+        u: Mastodon account object containing the email field.
+        embed: Discord embed to append the SkipSend Check field to.
+
+    Returns:
+        True if either the email is a disposable or presents issues.
+    """
+    result = False
+    try:
+        _debug("Checking spam...")
+        ssr = requests.get("https://skipsend.com/api/v1/check/", params={"email": {u["email"]}}, timeout=30)
+        ssc = ssr.json()
+        _debug("Done and JSON got", ssc)
+
+        ssi = "OK"
+        if ssc["skip"] == 1:
+            _debug("SkipSends says to skip")
+            result = True
+            reasons = []
+
+            if ssc["disposable"]:
+                reasons.append(f"Is a disposable email from {ssc['provider']}")
+
+            if ssc["no_mx"]:
+                reasons.append("MX record not found")
+
+            if ssc["cf_routed"]:
+                reasons.append("Uses Cloudflare Email Routing")
+
+            ssi = ", ".join(reasons)
+
+        embed.add_embed_field(name="SkipSend Check", value=ssi, inline=False)
+        _debug("SkipSends check embed added")
+    except requests.exceptions.RequestException as e:
+        print("SkipSends request failed. " + str(e))
+    except Exception as e:
+        print("SkipSends check failed. " + str(e))
+
+    return result
+
+
 def _check_verifier(u: dict, embed: DiscordEmbed) -> bool:
-    """Check if the email is from a disposable provider, adding the result to the embed.
+    """Check email against Verifier, adding results to the embed.
 
     Skips the check entirely when ``cfg.verifier_key`` is not configured.
 
@@ -108,12 +152,16 @@ def process_user(db: sqlite3.Connection, u: dict) -> None:
     1. Skips users already recorded in the database.
     2. Checks email and IP against:
         - StopForumSpam
+        - SkipSend
         - verifier.meetchopra.com
     3. Posts a summary embed to the configured Discord webhook
     4. Records the user in the database
 
     Args:
         u: Mastodon account object from the admin accounts API response.
+
+    Raises:
+        RuntimeError: If the database connection is not initialized.
     """
     _debug("=> process_user")
 
@@ -151,12 +199,14 @@ def process_user(db: sqlite3.Connection, u: dict) -> None:
     if cfg.DRY_RUN:
         print("DRY_RUN set, not checking user")
         spam_flagged = False
+        skipsend_flagged = False
         verifier_flagged = False
     else:
         spam_flagged = _check_spam(u, embed)
+        skipsend_flagged = _check_skipsend(u, embed)
         verifier_flagged = _check_verifier(u, embed)
 
-    ping_admin = spam_flagged or verifier_flagged
+    ping_admin = spam_flagged or skipsend_flagged or verifier_flagged
 
     webhook.add_embed(embed)
 
