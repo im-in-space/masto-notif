@@ -1,0 +1,80 @@
+[project]
+name = "masto-notif"
+version = "0.0.1"
+requires-python = ">=3.14.0"
+dependencies = [
+  "discord-webhook==1.4.1",
+  "html2text==2025.4.15",
+  "verifier==1.0.0",
+  "requests==2.34.2",
+]
+
+[dependency-groups]
+dev = [
+  "ruff>=0.15.17",
+]
+
+[tool.ruff]
+line-length = 140
+
+[tool.ruff.lint]
+select = [
+  "A",
+  "ARG",
+  "ASYNC",
+  "B",
+  "C4",
+  "C90",
+  "COM",
+  "CPY",
+  "DJ",
+  "DOC",
+  "DTZ",
+  "E",
+  "EM",
+  "ERA",
+  "EXE",
+  "F",
+  "FA",
+  "FBT",
+  "FIX",
+  "FLY",
+  "FURB",
+  "G",
+  "I",
+  "ICN",
+  "INP",
+  "INT",
+  "ISC",
+  "LOG",
+  "N",
+  "NPY",
+  "PD",
+  "PERF",
+  "PGH",
+  "PIE",
+  "PL",
+  "PLC",
+  "PLE",
+  "PLR",
+  "PLW",
+  "PT",
+  "PTH",
+  "PYI",
+  "Q",
+  "RET",
+  "RSE",
+  "RUF",
+  "S",
+  "SIM",
+  "SLF",
+  "SLOT",
+  "T10",
+  "TC",
+  "TD",
+  "TID",
+  "TRY",
+  "UP",
+  "W",
+  "YTT",
+]
