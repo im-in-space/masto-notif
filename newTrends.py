@@ -87,6 +87,8 @@ def trends_statuses(admin=False):
         if admin and not auto_approve:
             _debug('Will send to not auto-approved webhook')
             whook_url = cfg.whook_trends_rev
+        else:
+            continue
 
         webhook = DiscordWebhook(
             url=whook_url,
@@ -178,6 +180,8 @@ def trends_links(admin=False):
         if admin:
             _debug('Will send to not auto-approved webhook')
             whook_url = cfg.whook_trends_rev
+        else:
+            continue
 
         webhook = DiscordWebhook(
             url=whook_url,

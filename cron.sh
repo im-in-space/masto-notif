@@ -17,7 +17,7 @@ date
 echo "==> newRegs"
 python3 newRegs.py
 
-echo "==> newTrends"
+#echo "==> newTrends"
 python3 newTrends.py
 
 date
