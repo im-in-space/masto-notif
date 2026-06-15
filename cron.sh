@@ -15,9 +15,9 @@ echo $$ > "cron.pid"
 date
 
 echo "==> newRegs"
-python3 newRegs.py
+uv run newRegs.py
 
 echo "==> newTrends"
-python3 newTrends.py
+uv run newTrends.py
 
 date
