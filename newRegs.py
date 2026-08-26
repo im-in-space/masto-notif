@@ -146,7 +146,48 @@ def _check_verifier(u: dict, embed: DiscordEmbed) -> bool:
     return result
 
 
-def process_user(db: sqlite3.Connection, u: dict) -> None:
+def _check_fakefilter(u: dict, embed: DiscordEmbed) -> bool:
+    """Check email domain against FakeFilter, adding results to the embed.
+
+    Args:
+        u: Mastodon account object containing the email field.
+        embed: Discord embed to append the Disposable Email Check field to.
+
+    Returns:
+        True if the email domain is considered fake.
+    """
+    result = False
+    try:
+        _debug("Checking FakeFilter...")
+        email_domain = u["email"].split("@")[-1]
+
+        if email_domain:
+            ffr = requests.get("https://fakefilter.net/api/is/fakedomain/" + email_domain, timeout=30)
+            ffc = ffr.json()
+            _debug("Done and JSON got", ffc)
+
+            ffi = "OK"
+            if ffc["retcode"] == 200 and ffc["isFakeDomain"]:  # noqa: PLR2004
+                _debug("FakeFilter says it's fake")
+                result = True
+                providers = ["DID NOT PASS"]
+
+                if ffc["details"] and "providers" in ffc["details"]:
+                    providers = ffc["details"]["providers"]
+
+                ffi = ", ".join(providers)
+
+            embed.add_embed_field(name="FakeFilter Check", value=ffi, inline=False)
+            _debug("FakeFilter check embed added")
+    except requests.exceptions.RequestException as e:
+        print("FakeFilter request failed. " + str(e))
+    except Exception as e:
+        print("FakeFilter check failed. " + str(e))
+
+    return result
+
+
+def process_user(db: sqlite3.Connection, u: dict) -> None:  # noqa: PLR0915
     """Send a Discord notification for a newly registered user.
 
     1. Skips users already recorded in the database.
@@ -201,12 +242,14 @@ def process_user(db: sqlite3.Connection, u: dict) -> None:
         spam_flagged = False
         skipsend_flagged = False
         verifier_flagged = False
+        fakefilter_flagged = False
     else:
         spam_flagged = _check_spam(u, embed)
         skipsend_flagged = _check_skipsend(u, embed)
         verifier_flagged = _check_verifier(u, embed)
+        fakefilter_flagged = _check_fakefilter(u, embed)
 
-    ping_admin = spam_flagged or skipsend_flagged or verifier_flagged
+    ping_admin = spam_flagged or skipsend_flagged or verifier_flagged or fakefilter_flagged
 
     webhook.add_embed(embed)
 
