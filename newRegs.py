@@ -7,7 +7,6 @@ from shutil import copyfile
 
 import requests
 from discord_webhook import DiscordEmbed, DiscordWebhook
-from verifier import verifier
 
 import config as cfg
 
@@ -114,38 +113,6 @@ def _check_skipsend(u: dict, embed: DiscordEmbed) -> bool:
     return result
 
 
-def _check_verifier(u: dict, embed: DiscordEmbed) -> bool:
-    """Check email against Verifier, adding results to the embed.
-
-    Skips the check entirely when ``cfg.verifier_key`` is not configured.
-
-    Args:
-        u: Mastodon account object containing the email field.
-        embed: Discord embed to append the Verifier Email Check field to.
-
-    Returns:
-        True if the email did not pass the disposable-email check.
-    """
-    if not cfg.verifier_key:
-        return False
-
-    result = False
-    try:
-        _debug("Checking with verifier")
-        bi = "OK"
-        if not verifier.verify(u["email"], cfg.verifier_key):
-            _debug("Email is a burner")
-            result = True
-            bi = "DID NOT PASS"
-
-        embed.add_embed_field(name="Verifier Email Check", value=bi, inline=False)
-        _debug("Verifier check embed added")
-    except Exception as e:
-        print("Verifier check failed. " + str(e))
-
-    return result
-
-
 def _check_fakefilter(u: dict, embed: DiscordEmbed) -> bool:
     """Check email domain against FakeFilter, adding results to the embed.
 
@@ -194,7 +161,7 @@ def process_user(db: sqlite3.Connection, u: dict) -> None:  # noqa: PLR0915
     2. Checks email and IP against:
         - StopForumSpam
         - SkipSend
-        - verifier.meetchopra.com
+        - FakeFilter
     3. Posts a summary embed to the configured Discord webhook
     4. Records the user in the database
 
@@ -241,15 +208,13 @@ def process_user(db: sqlite3.Connection, u: dict) -> None:  # noqa: PLR0915
         print("DRY_RUN set, not checking user")
         spam_flagged = False
         skipsend_flagged = False
-        verifier_flagged = False
         fakefilter_flagged = False
     else:
         spam_flagged = _check_spam(u, embed)
         skipsend_flagged = _check_skipsend(u, embed)
-        verifier_flagged = _check_verifier(u, embed)
         fakefilter_flagged = _check_fakefilter(u, embed)
 
-    ping_admin = spam_flagged or skipsend_flagged or verifier_flagged or fakefilter_flagged
+    ping_admin = spam_flagged or skipsend_flagged or fakefilter_flagged
 
     webhook.add_embed(embed)
 

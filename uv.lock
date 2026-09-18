@@ -94,7 +94,6 @@ dependencies = [
     { name = "discord-webhook" },
     { name = "html2text" },
     { name = "requests" },
-    { name = "verifier" },
 ]
 
 [package.dev-dependencies]
@@ -107,7 +106,6 @@ requires-dist = [
     { name = "discord-webhook", specifier = "==1.4.1" },
     { name = "html2text", specifier = "==2025.4.15" },
     { name = "requests", specifier = "==2.34.2" },
-    { name = "verifier", specifier = "==1.0.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -160,13 +158,4 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/53/0c/06f8b233b8fd13b9e5ee11424ef85419ba0d8ba0b3138bf360be2ff56953/urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c", size = 433602, upload-time = "2026-05-07T16:13:18.596Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7f/3e/5db95bcf282c52709639744ca2a8b149baccf648e39c8cc87553df9eae0c/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897", size = 131087, upload-time = "2026-05-07T16:13:17.151Z" },
-]
-
-[[package]]
-name = "verifier"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/fc/5b/dd27d685666dba902f70893d66f7d280a2bbeab81eed805dd683ee299459/verifier-1.0.0.tar.gz", hash = "sha256:268e0b6c1744d95601421fa93da4be4112b208f182236f2c66350b5c4dfc972f", size = 1585, upload-time = "2019-02-12T13:38:28.492Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/64/5e/cf1b2cd9010ba5575cfb376a6f86f6bb2afdd23cfc57aa818bf22b4f61ec/verifier-1.0.0-py3-none-any.whl", hash = "sha256:fd456f5e4b1f1ea3a0ab028e5e75c72bdfc4be5bd8d06490309ae6c383d08fd9", size = 2834, upload-time = "2019-02-12T13:38:26.162Z" },
 ]
