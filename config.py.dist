@@ -33,3 +33,6 @@ trends_auto = False
 
 # List of strings to prevent auto-approval (ie. some begposts to vet)
 trends_hold = ["donate", "support", "paypal", "kofi", "ko-fi", "sponsor"]
+
+# Automatically reject registrations from disposable email providers
+reject_disposable = True

@@ -154,7 +154,28 @@ def _check_fakefilter(u: dict, embed: DiscordEmbed) -> bool:
     return result
 
 
-def process_user(db: sqlite3.Connection, u: dict) -> None:  # noqa: PLR0915
+def _reject_registration(u: dict) -> bool:
+    """Automatically reject the registration.
+
+
+    Args:
+        u: Mastodon account.
+
+    Returns:
+        True if that worked.
+    """
+    dr = requests.request(
+        "POST",
+        "{base}/api/v1/admin/accounts/{id}/reject".format(base=cfg.base_url, id=u["id"]),
+        headers={"Authorization": "Bearer " + cfg.token},
+        timeout=30,
+    )
+    _debug("Done")
+
+    return dr.status_code == requests.codes.ok
+
+
+def process_user(db: sqlite3.Connection, u: dict) -> None:  # noqa: PLR0915, C901
     """Send a Discord notification for a newly registered user.
 
     1. Skips users already recorded in the database.
@@ -214,13 +235,16 @@ def process_user(db: sqlite3.Connection, u: dict) -> None:  # noqa: PLR0915
         skipsend_flagged = _check_skipsend(u, embed)
         fakefilter_flagged = _check_fakefilter(u, embed)
 
-    ping_admin = spam_flagged or skipsend_flagged or fakefilter_flagged
-
     webhook.add_embed(embed)
 
-    if ping_admin and cfg.discord_uid:
+    if cfg.discord_uid and (spam_flagged or skipsend_flagged or fakefilter_flagged):
         _debug("Will ping admin")
         webhook.content = f"<@{cfg.discord_uid}>"
+
+    if cfg.reject_disposable and (skipsend_flagged or fakefilter_flagged):
+        _debug("Will reject disposable registration")
+        if _reject_registration(u):
+            webhook.content = f"{webhook.content} (Registration automatically denied)"
 
     if cfg.DRY_RUN:
         print("DRY_RUN set, skipping webhook execution")
@@ -254,6 +278,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     _debug("Requesting local accounts...")
+    # @TODO: Use v2 API
     response = requests.request(
         "GET",
         cfg.base_url + "/api/v1/admin/accounts",
