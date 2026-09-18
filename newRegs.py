@@ -237,11 +237,10 @@ def process_user(db: sqlite3.Connection, u: dict) -> None:  # noqa: PLR0915, C90
 
     webhook.add_embed(embed)
 
-    if cfg.discord_uid and (spam_flagged or skipsend_flagged or fakefilter_flagged):
+    if cfg.discord_uid and not (spam_flagged or skipsend_flagged or fakefilter_flagged):
         _debug("Will ping admin")
         webhook.content = f"<@{cfg.discord_uid}>"
-
-    if cfg.reject_disposable and (skipsend_flagged or fakefilter_flagged):
+    elif cfg.reject_disposable and (skipsend_flagged or fakefilter_flagged):
         _debug("Will reject disposable registration")
         if _reject_registration(u):
             webhook.content = "Registration automatically denied"
