@@ -244,7 +244,7 @@ def process_user(db: sqlite3.Connection, u: dict) -> None:  # noqa: PLR0915, C90
     if cfg.reject_disposable and (skipsend_flagged or fakefilter_flagged):
         _debug("Will reject disposable registration")
         if _reject_registration(u):
-            webhook.content = f"{webhook.content} (Registration automatically denied)"
+            webhook.content = "Registration automatically denied"
 
     if cfg.DRY_RUN:
         print("DRY_RUN set, skipping webhook execution")
