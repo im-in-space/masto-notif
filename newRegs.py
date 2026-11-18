@@ -96,7 +96,7 @@ def _add_ip_info(u: dict, embed: DiscordEmbed) -> None:
         print("ASN lookup failed. " + str(e))
 
     # MaxMind (if available) for a more accurate GeoIP
-    if getattr(cfg, "maxmind_db", False):
+    if cfg.maxmind_db:
         try:
             with geoip2.database.Reader(cfg.maxmind_db) as reader:
                 resp = reader.country(ip)
@@ -107,8 +107,8 @@ def _add_ip_info(u: dict, embed: DiscordEmbed) -> None:
             print("GeoIP lookup failed. " + str(e))
 
     # Hostnames are attacker-controlled, don't let them break the formatting
-    host_value = "`" + hostname.replace("`", "") + "`" if hostname else "No hostname found"
-    embed.add_embed_field(name="IP", value=f"`{ip}` ({host_value})  \nGeoIP: {country} \nNetwork: {network}", inline=False)
+    host_value = f"`{hostname.replace('`', '')}`" if hostname else "No hostname found"
+    embed.add_embed_field(name="IP", value=f"`{ip}` ({host_value})\n**Network:** {network}\n**GeoIP:** {country}", inline=False)
     _debug("IP info embed added")
 
 
@@ -151,12 +151,12 @@ def _check_dnsbl(u: dict, embed: DiscordEmbed) -> bool:
             codes = []
         except Exception as e:
             print(f"{name} lookup failed. {e}")
-            lines.append(f"{name}: lookup failed")
+            lines.append(f"**{name}:** lookup failed")
             continue
 
         # 127.255.255.x means the query was refused (public resolver, rate limit...)
         if any(c.startswith("127.255.255.") for c in codes):
-            lines.append(f"{name}: query refused (public resolver or rate limited?)")
+            lines.append(f"**{name}:** query refused (public resolver or rate limited?)")
             continue
 
         checked += 1
@@ -167,7 +167,7 @@ def _check_dnsbl(u: dict, embed: DiscordEmbed) -> bool:
         if codes:
             _debug(f"IP listed on {name}", codes)
             result = True
-            lines.append(f"{name}: LISTED ({', '.join(codes)})")
+            lines.append(f"**{name}:** LISTED ({', '.join(codes)})")
 
     embed.add_embed_field(name="DNSBL Check", value="\n".join(lines) or f"OK ({checked} lists checked)", inline=False)
     _debug("DNSBL check embed added")
@@ -196,7 +196,11 @@ def _check_spam(u: dict, embed: DiscordEmbed) -> bool:
         if sc["email"]["appears"] == 1:
             _debug("Email found in spam")
             result = True
-            sce = "Freq.: {}, Seen: {}, Confidence: {}".format(sc["email"]["frequency"], sc["email"]["lastseen"], sc["email"]["confidence"])
+            sce = "**Freq.:** {}\n**Seen:** {}\n**Confidence:** {}".format(
+                sc["email"]["frequency"],
+                sc["email"]["lastseen"],
+                sc["email"]["confidence"],
+            )
 
         embed.add_embed_field(name="StopForumSpam Email Check", value=sce, inline=False)
 
@@ -204,7 +208,7 @@ def _check_spam(u: dict, embed: DiscordEmbed) -> bool:
         if sc["ip"]["appears"] == 1:
             _debug("IP found in spam")
             result = True
-            sci = "Country: {}, Freq.: {}, Seen: {}, Confidence: {}".format(
+            sci = "**Country:** {}\n**Freq.:** {}\n**Seen:** {}\n**Confidence:** {}".format(
                 sc["ip"]["country"],
                 sc["ip"]["frequency"],
                 sc["ip"]["lastseen"],
@@ -318,7 +322,7 @@ def _reject_registration(u: dict) -> bool:
     """
     dr = requests.request(
         "POST",
-        "{base}/api/v1/admin/accounts/{id}/reject".format(base=cfg.base_url, id=u["id"]),
+        f"{cfg.base_url}/api/v1/admin/accounts/{u['id']}/reject",
         headers={"Authorization": "Bearer " + cfg.token},
         timeout=30,
     )
