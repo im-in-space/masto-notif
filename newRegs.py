@@ -169,7 +169,7 @@ def _check_dnsbl(u: dict, embed: DiscordEmbed) -> bool:
             result = True
             lines.append(f"{name}: LISTED ({', '.join(codes)})")
 
-    embed.add_embed_field(name="Blocklist Check", value="\n".join(lines) or f"OK ({checked} lists checked)", inline=False)
+    embed.add_embed_field(name="DNSBL Check", value="\n".join(lines) or f"OK ({checked} lists checked)", inline=False)
     _debug("DNSBL check embed added")
 
     return result
@@ -387,10 +387,10 @@ def process_user(db: sqlite3.Connection, u: dict) -> None:  # noqa: PLR0915, C90
         fakefilter_flagged = False
         dnsbl_flagged = False
     else:
+        dnsbl_flagged = _check_dnsbl(u, embed)
         spam_flagged = _check_spam(u, embed)
         skipsend_flagged = _check_skipsend(u, embed)
         fakefilter_flagged = _check_fakefilter(u, embed)
-        dnsbl_flagged = _check_dnsbl(u, embed)
 
     webhook.add_embed(embed)
 
