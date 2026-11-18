@@ -36,3 +36,8 @@ trends_hold = ["donate", "support", "paypal", "kofi", "ko-fi", "sponsor"]
 
 # Automatically reject registrations from disposable email providers
 reject_disposable = True
+
+# Path to a MaxMind GeoLite2 Country database (.mmdb) for IP geolocation.
+# Free account + download: https://www.maxmind.com/en/geolite2/signup
+# Set to `False` to disable (the country from the Team Cymru ASN lookup is used instead)
+maxmind_db = False

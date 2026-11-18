@@ -9,6 +9,7 @@ __pycache__/
 config.py
 
 # Data
+*.mmdb
 reg_last.txt
 regs.json
 trendsLinks.json

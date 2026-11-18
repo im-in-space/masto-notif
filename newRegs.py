@@ -5,10 +5,17 @@ import time
 from pathlib import Path
 from shutil import copyfile
 
+import dns.resolver
+import dns.reversename
+import geoip2.database
+import geoip2.errors
 import requests
 from discord_webhook import DiscordEmbed, DiscordWebhook
 
 import config as cfg
+
+resolver = dns.resolver.Resolver()
+resolver.lifetime = 5.0
 
 
 def _debug(msg: str, obj: object = "") -> None:
@@ -21,6 +28,151 @@ def _debug(msg: str, obj: object = "") -> None:
     if cfg.DEBUG_MODE:
         now = datetime.datetime.now(tz=datetime.UTC).strftime("%Y-%m-%d %H:%M:%S.%f")
         print("[" + now + "] " + msg, obj)
+
+
+def _reverse_labels(ip: str) -> str:
+    """Reverse an IP for DNS-based lookups (`1.2.3.4` becomes `4.3.2.1`, IPv6 is reversed per nibble).
+
+    Args:
+        ip: IPv4 or IPv6 address.
+
+    Returns:
+        The reversed labels.
+    """
+    name = dns.reversename.from_address(ip).to_text(omit_final_dot=True)
+    return name.removesuffix(".in-addr.arpa").removesuffix(".ip6.arpa")
+
+
+def _dns_txt(name: str) -> str | None:
+    """Get the first TXT record of a name.
+
+    Args:
+        name: The DNS name to query.
+
+    Returns:
+        The record text, or None if there is no such record.
+    """
+    try:
+        return b"".join(resolver.resolve(name, "TXT")[0].strings).decode(errors="replace")
+    except dns.resolver.NXDOMAIN, dns.resolver.NoAnswer:
+        # ¯\_ (ツ)_/¯
+        return None
+
+
+def _add_ip_info(u: dict, embed: DiscordEmbed) -> None:
+    """Add a row with the IP and hostname, network (ASN) and country to the embed.
+
+    Args:
+        u: Mastodon account object containing the ip field.
+        embed: Discord embed to append the IP, Network and GeoIP fields to.
+    """
+    ip = u.get("ip")
+    if not ip:
+        return
+
+    _debug("Gathering IP info...")
+    hostname = None
+    network = "Unknown"
+    country = "Unknown"
+
+    try:
+        hostname = str(resolver.resolve_address(ip)[0].target).rstrip(".")
+    except dns.resolver.NXDOMAIN, dns.resolver.NoAnswer:
+        # ¯\_ (ツ)_/¯
+        pass
+    except Exception as e:
+        print("Reverse DNS failed. " + str(e))
+
+    # Team Cymru ASN lookup
+    try:
+        origin = _dns_txt(_reverse_labels(ip) + (".origin6.asn.cymru.com" if ":" in ip else ".origin.asn.cymru.com"))
+        if origin:
+            fields = [f.strip() for f in origin.split("|")]
+            asn = fields[0].split()[0]  # May be several ASNs on multi-origin prefixes
+            country = fields[2] or "Unknown"
+            name = _dns_txt(f"AS{asn}.asn.cymru.com")
+            network = f"AS{asn} {name.split('|')[-1].strip() if name else ''}\n`{fields[1]}`"
+    except Exception as e:
+        print("ASN lookup failed. " + str(e))
+
+    # MaxMind (if available) for a more accurate GeoIP
+    if getattr(cfg, "maxmind_db", False):
+        try:
+            with geoip2.database.Reader(cfg.maxmind_db) as reader:
+                resp = reader.country(ip)
+            country = f"{resp.country.name} ({resp.country.iso_code})"
+        except geoip2.errors.AddressNotFoundError:
+            pass
+        except Exception as e:
+            print("GeoIP lookup failed. " + str(e))
+
+    # Hostnames are attacker-controlled, don't let them break the formatting
+    host_value = "`" + hostname.replace("`", "") + "`" if hostname else "No hostname found"
+    embed.add_embed_field(name="IP", value=f"`{ip}` ({host_value})  \nGeoIP: {country} \nNetwork: {network}", inline=False)
+    _debug("IP info embed added")
+
+
+def _check_dnsbl(u: dict, embed: DiscordEmbed) -> bool:
+    """Check the IP against DNS blocklists, adding results to the embed.
+
+    Args:
+        u: Mastodon account object containing the ip field.
+        embed: Discord embed to append the Blocklist Check field to.
+
+    Returns:
+        True if the IP is listed on at least one blocklist.
+    """
+    ip = u.get("ip")
+    if not ip:
+        return False
+
+    _debug("Checking DNSBLs...")
+    result = False
+    labels = _reverse_labels(ip)
+    lines = []
+    checked = 0
+
+    # (name, zone, supports IPv6)
+    dnsbls = (
+        ("Spamhaus", "zen.spamhaus.org", True),
+        ("SpamCop", "bl.spamcop.net", False),
+        ("UCEPROTECT", "dnsbl-1.uceprotect.net", False),
+        ("DroneBL", "dnsbl.dronebl.org", False),
+        ("EFnet RBL", "rbl.efnetrbl.org", False),
+    )
+
+    for name, zone, has_ipv6 in dnsbls:
+        if ":" in ip and not has_ipv6:
+            continue
+
+        try:
+            codes = [r.to_text() for r in resolver.resolve(f"{labels}.{zone}", "A")]
+        except dns.resolver.NXDOMAIN, dns.resolver.NoAnswer:
+            codes = []
+        except Exception as e:
+            print(f"{name} lookup failed. {e}")
+            lines.append(f"{name}: lookup failed")
+            continue
+
+        # 127.255.255.x means the query was refused (public resolver, rate limit...)
+        if any(c.startswith("127.255.255.") for c in codes):
+            lines.append(f"{name}: query refused (public resolver or rate limited?)")
+            continue
+
+        checked += 1
+        if name == "Spamhaus":
+            # Spamhaus has those codes for "residential/dynamic range"
+            # They're not abuse by themselves, so filter them out
+            codes = [c for c in codes if c not in {"127.0.0.10", "127.0.0.11"}]
+        if codes:
+            _debug(f"IP listed on {name}", codes)
+            result = True
+            lines.append(f"{name}: LISTED ({', '.join(codes)})")
+
+    embed.add_embed_field(name="Blocklist Check", value="\n".join(lines) or f"OK ({checked} lists checked)", inline=False)
+    _debug("DNSBL check embed added")
+
+    return result
 
 
 def _check_spam(u: dict, embed: DiscordEmbed) -> bool:
@@ -179,12 +331,14 @@ def process_user(db: sqlite3.Connection, u: dict) -> None:  # noqa: PLR0915, C90
     """Send a Discord notification for a newly registered user.
 
     1. Skips users already recorded in the database.
-    2. Checks email and IP against:
+    2. Adds IP details (hostname, ASN, location)
+    3. Checks email and IP against:
         - StopForumSpam
         - SkipSend
         - FakeFilter
-    3. Posts a summary embed to the configured Discord webhook
-    4. Records the user in the database
+        - DNS blocklists (Spamhaus, SpamCop, UCEPROTECT, DroneBL, EFnet RBL)
+    4. Posts a summary embed to the configured Discord webhook
+    5. Records the user in the database
 
     Args:
         u: Mastodon account object from the admin accounts API response.
@@ -221,23 +375,26 @@ def process_user(db: sqlite3.Connection, u: dict) -> None:  # noqa: PLR0915, C90
         # Silently ignore
         print("Timestamp fail")
 
-    embed.add_embed_field(name="Username", value=u["username"])
-    embed.add_embed_field(name="Locale", value=u["locale"])
-    embed.add_embed_field(name="Email", value=u["email"], inline=False)
+    embed.add_embed_field(name="Username", value=f"`{u['username']}`")
+    embed.add_embed_field(name="Locale", value=f"`{u['locale']}`")
+    embed.add_embed_field(name="Email", value=f"`{u['email']}`", inline=False)
+    _add_ip_info(u, embed)
 
     if cfg.DRY_RUN:
         print("DRY_RUN set, not checking user")
         spam_flagged = False
         skipsend_flagged = False
         fakefilter_flagged = False
+        dnsbl_flagged = False
     else:
         spam_flagged = _check_spam(u, embed)
         skipsend_flagged = _check_skipsend(u, embed)
         fakefilter_flagged = _check_fakefilter(u, embed)
+        dnsbl_flagged = _check_dnsbl(u, embed)
 
     webhook.add_embed(embed)
 
-    if cfg.discord_uid and not (spam_flagged or skipsend_flagged or fakefilter_flagged):
+    if cfg.discord_uid and not (spam_flagged or skipsend_flagged or fakefilter_flagged or dnsbl_flagged):
         _debug("Will ping admin")
         webhook.content = f"<@{cfg.discord_uid}>"
     elif cfg.reject_disposable and (skipsend_flagged or fakefilter_flagged):

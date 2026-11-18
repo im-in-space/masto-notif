@@ -4,14 +4,14 @@ version = "0.0.1"
 requires-python = ">=3.14.0"
 dependencies = [
   "discord-webhook==1.4.1",
+  "dnspython==2.9.2",
+  "geoip2==5.4.0",
   "html2text==2025.4.15",
   "requests==2.34.2",
 ]
 
 [dependency-groups]
-dev = [
-  "ruff>=0.15.17",
-]
+dev = ["ruff>=0.15.17"]
 
 [tool.ruff]
 line-length = 140

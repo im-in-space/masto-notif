@@ -37,3 +37,11 @@ Three external services are used in [`newRegs.py`](newRegs.py):
 - [Stop Forum Spam](https://www.stopforumspam.com/) is used to check if an IP or email is in their database.
 - [SkipSend](https://skipsend.com/api-docs/) to check for disposable addresses.
 - [FakeFilter](https://fakefilter.net/static/docs/restful/) to check for disposable domains.
+- [Team Cymru](https://www.team-cymru.com/ip-asn-mapping) for the ASN, network name and (fallback) country.
+- DNS Blocklists: Spamhaus ZEN (with IPv6 support), SpamCop, UCEPROTECT (level 1), DroneBL and EFnet RBL.
+
+Optionally, set `maxmind_db` in the config to a [GeoLite2 Country database](https://www.maxmind.com/en/geolite2/signup) for a better GeoIP.
+
+> [!NOTE]
+> Spamhaus refuses queries coming from public resolvers (Google, Cloudflare, ...) and heavy volumes.
+> Use your own/ISP resolver, or the lookup will be reported as "query refused".
