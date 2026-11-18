@@ -46,7 +46,7 @@ def _check_spam(u: dict, embed: DiscordEmbed) -> bool:
             result = True
             sce = "Freq.: {}, Seen: {}, Confidence: {}".format(sc["email"]["frequency"], sc["email"]["lastseen"], sc["email"]["confidence"])
 
-        embed.add_embed_field(name="Email Check", value=sce, inline=False)
+        embed.add_embed_field(name="StopForumSpam Email Check", value=sce, inline=False)
 
         sci = "OK"
         if sc["ip"]["appears"] == 1:
@@ -59,7 +59,7 @@ def _check_spam(u: dict, embed: DiscordEmbed) -> bool:
                 sc["ip"]["confidence"],
             )
 
-        embed.add_embed_field(name="IP Check", value=sci, inline=False)
+        embed.add_embed_field(name="StopForumSpam IP Check", value=sci, inline=False)
         _debug("Spam check embed added")
     except requests.exceptions.RequestException as e:
         print("StopForumSpam request failed. " + str(e))
